@@ -149,6 +149,18 @@ export async function saveImageSourceToDirectory(
   });
 }
 
+export async function saveImageSourceToAppDebugDir(
+  source: string,
+  category = 'grid',
+  suggestedFileName?: string
+): Promise<string> {
+  return await invoke('save_image_source_to_app_debug_dir', {
+    source,
+    category,
+    suggestedFileName,
+  });
+}
+
 export async function copyImageSourceToClipboard(source: string): Promise<void> {
   await invoke('copy_image_source_to_clipboard', { source });
 }

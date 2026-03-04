@@ -15,6 +15,8 @@ import {
   AUTO_REQUEST_ASPECT_RATIO,
   CANVAS_NODE_TYPES,
   DEFAULT_ASPECT_RATIO,
+  EXPORT_RESULT_NODE_DEFAULT_WIDTH,
+  EXPORT_RESULT_NODE_LAYOUT_HEIGHT,
   type ImageSize,
   type StoryboardGenNodeData,
 } from '@/features/canvas/domain/canvasNodes';
@@ -92,6 +94,7 @@ const PARAM_ROW_HEIGHT_PX = 20;
 const NODE_VERTICAL_PADDING_PX = 24;
 const FRAME_CELL_MIN_WIDTH_PX = 24;
 const FRAME_CELL_MIN_HEIGHT_PX = 16;
+const GRID_LINE_THICKNESS_PERCENT = 0.4;
 
 function getTextareaCaretOffset(
   textarea: HTMLTextAreaElement,
@@ -304,6 +307,90 @@ function generateFrameId(): string {
 function toCssAspectRatio(aspectRatio: string): string {
   const [width = '1', height = '1'] = aspectRatio.split(':');
   return `${width} / ${height}`;
+}
+
+/**
+ * 将 ImageSize 解析为像素宽度
+ */
+function resolveSizeToPixels(size: string): number {
+  const sizeMap: Record<string, number> = {
+    '0.5K': 512,
+    '1K': 1024,
+    '2K': 2048,
+    '4K': 4096,
+  };
+  return sizeMap[size] ?? 1024;
+}
+
+/**
+ * 生成网格图片的 dataURL
+ * 根据用户设置的分辨率、行列数和比例生成白底黑线的网格图
+ * 用于帮助 API 更好地生成分镜
+ */
+function generateGridImageDataUrl(
+  aspectRatio: string,
+  rows: number,
+  cols: number,
+  resolution: string,
+  lineThicknessPercent: number = GRID_LINE_THICKNESS_PERCENT
+): string {
+  const [ratioW = '16', ratioH = '9'] = aspectRatio.split(':');
+  const ratioWNum = parseFloat(ratioW);
+  const ratioHNum = parseFloat(ratioH);
+
+  // 根据分辨率计算画布的总像素尺寸
+  const totalPixels = resolveSizeToPixels(resolution);
+
+  // 根据比例计算画布的实际宽高
+  // 宽度 = 总像素，高度根据比例计算
+  const canvasWidth = totalPixels;
+  const canvasHeight = Math.round(totalPixels * (ratioHNum / ratioWNum));
+  const thickness = Math.max(
+    1,
+    Math.round((Math.min(canvasWidth, canvasHeight) * lineThicknessPercent) / 100)
+  );
+
+  // 计算单个格子的像素尺寸
+  const cellWidth = canvasWidth / cols;
+  const cellHeight = canvasHeight / rows;
+
+  // 创建 canvas 并绘制
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Failed to create canvas context');
+  }
+
+  // 白色背景
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  // 黑色线条
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = thickness;
+
+  // 绘制内部垂直线 (不包含最左边和最右边)
+  for (let i = 1; i < cols; i++) {
+    const x = i * cellWidth;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvasHeight);
+    ctx.stroke();
+  }
+
+  // 绘制内部水平线 (不包含最上边和最下边)
+  for (let i = 1; i < rows; i++) {
+    const y = i * cellHeight;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvasWidth, y);
+    ctx.stroke();
+  }
+
+  return canvas.toDataURL('image/png');
 }
 
 export const StoryboardGenNode = memo(({ id, data, selected, width, height }: StoryboardGenNodeProps) => {
@@ -601,7 +688,11 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
 
     // Create new image node with generating state immediately
     // Use auto-positioning to avoid collisions with existing nodes
-    const newNodePosition = findNodePosition(id, 220, 180);
+    const newNodePosition = findNodePosition(
+      id,
+      EXPORT_RESULT_NODE_DEFAULT_WIDTH,
+      EXPORT_RESULT_NODE_LAYOUT_HEIGHT
+    );
     const newNodeId = addNode(
       CANVAS_NODE_TYPES.exportImage,
       newNodePosition,
@@ -645,12 +736,23 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
         }
       }
 
+      // 生成网格图片作为最后一张参考图片
+      const gridImageDataUrl = generateGridImageDataUrl(
+        frameAspectRatioValue,
+        nodeData.gridRows,
+        nodeData.gridCols,
+        selectedResolution.value
+      );
+
+      // 将网格图片作为最后一张参考图片
+      const allReferenceImages = [...incomingImages, gridImageDataUrl];
+
       const resultUrl = await canvasAiGateway.generateImage({
         prompt,
         model: requestResolution.requestModel,
         size: selectedResolution.value,
         aspectRatio: resolvedRequestAspectRatio,
-        referenceImages: incomingImages,
+        referenceImages: allReferenceImages,
       });
 
       const prepared = await prepareNodeImage(resultUrl);
@@ -687,6 +789,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
     selectedModel.id,
     findNodePosition,
     updateNodeData,
+    frameAspectRatioValue,
   ]);
 
   const handleRowChange = useCallback(
@@ -952,11 +1055,10 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
                   insertImageReference(imageIndex);
                 }}
                 onMouseEnter={() => setPickerActiveIndex(imageIndex)}
-                className={`flex w-full items-center gap-2 border border-transparent bg-bg-dark/70 px-2 py-2 text-left text-sm text-text-dark transition-colors hover:border-[rgba(255,255,255,0.18)] ${
-                  pickerActiveIndex === imageIndex
+                className={`flex w-full items-center gap-2 border border-transparent bg-bg-dark/70 px-2 py-2 text-left text-sm text-text-dark transition-colors hover:border-[rgba(255,255,255,0.18)] ${pickerActiveIndex === imageIndex
                     ? 'border-[rgba(255,255,255,0.24)] bg-bg-dark'
                     : ''
-                }`}
+                  }`}
               >
                 <img
                   src={item.displayUrl}

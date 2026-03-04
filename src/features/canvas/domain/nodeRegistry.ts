@@ -64,6 +64,7 @@ const uploadNodeDefinition: CanvasNodeDefinition<UploadImageNodeData> = {
     imageUrl: null,
     previewImageUrl: null,
     aspectRatio: DEFAULT_ASPECT_RATIO,
+    isSizeManuallyAdjusted: false,
     sourceFileName: null,
   }),
 };
@@ -90,6 +91,7 @@ const imageEditNodeDefinition: CanvasNodeDefinition<ImageEditNodeData> = {
     imageUrl: null,
     previewImageUrl: null,
     aspectRatio: DEFAULT_ASPECT_RATIO,
+    isSizeManuallyAdjusted: false,
     requestAspectRatio: AUTO_REQUEST_ASPECT_RATIO,
     prompt: '',
     model: DEFAULT_IMAGE_MODEL_ID,
@@ -122,6 +124,7 @@ const exportImageNodeDefinition: CanvasNodeDefinition<ExportImageNodeData> = {
     imageUrl: null,
     previewImageUrl: null,
     aspectRatio: DEFAULT_ASPECT_RATIO,
+    isSizeManuallyAdjusted: false,
     resultKind: 'generic',
   }),
 };

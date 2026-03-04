@@ -5,6 +5,9 @@ import { Image as ImageIcon, Sparkles } from 'lucide-react';
 import {
   CANVAS_NODE_TYPES,
   DEFAULT_ASPECT_RATIO,
+  EXPORT_RESULT_NODE_DEFAULT_WIDTH,
+  EXPORT_RESULT_NODE_MIN_HEIGHT,
+  EXPORT_RESULT_NODE_MIN_WIDTH,
   type CanvasNodeType,
   type ExportImageNodeData,
   type ImageEditNodeData,
@@ -46,9 +49,12 @@ export const ImageNode = memo(({ id, data, selected, type, width, height }: Imag
   const generationDurationMs =
     typeof data.generationDurationMs === 'number' ? data.generationDurationMs : 60000;
   const resolvedAspectRatio = data.aspectRatio || DEFAULT_ASPECT_RATIO;
-  const resolvedWidth = Math.max(160, Math.round(width ?? 220));
+  const defaultWidth = EXPORT_RESULT_NODE_DEFAULT_WIDTH;
+  const minWidth = EXPORT_RESULT_NODE_MIN_WIDTH;
+  const minHeight = EXPORT_RESULT_NODE_MIN_HEIGHT;
+  const resolvedWidth = Math.max(minWidth, Math.round(width ?? defaultWidth));
   const resolvedHeight = Math.max(
-    100,
+    minHeight,
     Math.round(height ?? (resolvedWidth / toAspectRatioValue(resolvedAspectRatio)))
   );
   const resolvedTitle = useMemo(
@@ -154,7 +160,12 @@ export const ImageNode = memo(({ id, data, selected, type, width, height }: Imag
         position={Position.Right}
         className="!h-2 !w-2 !border-surface-dark !bg-accent"
       />
-      <NodeResizeHandle minWidth={160} minHeight={100} maxWidth={1600} maxHeight={1600} />
+      <NodeResizeHandle
+        minWidth={EXPORT_RESULT_NODE_MIN_WIDTH}
+        minHeight={EXPORT_RESULT_NODE_MIN_HEIGHT}
+        maxWidth={1600}
+        maxHeight={1600}
+      />
     </div>
   );
 });

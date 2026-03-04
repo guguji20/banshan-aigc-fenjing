@@ -12,6 +12,10 @@ import {
   CANVAS_NODE_TYPES,
   DEFAULT_ASPECT_RATIO,
   DEFAULT_NODE_WIDTH,
+  EXPORT_RESULT_NODE_DEFAULT_WIDTH,
+  EXPORT_RESULT_NODE_LAYOUT_HEIGHT,
+  EXPORT_RESULT_NODE_MIN_HEIGHT,
+  EXPORT_RESULT_NODE_MIN_WIDTH,
   type ActiveToolDialog,
   type CanvasEdge,
   type CanvasNode,
@@ -290,6 +294,129 @@ function getNodeSize(node: CanvasNode): { width: number; height: number } {
   };
 }
 
+function parseAspectRatioValue(aspectRatio: string): number {
+  const [rawWidth = '1', rawHeight = '1'] = aspectRatio.split(':');
+  const width = Number(rawWidth);
+  const height = Number(rawHeight);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return 1;
+  }
+  return width / height;
+}
+
+function getNodeStyleDimension(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function isImageAutoResizableType(type: CanvasNodeType): boolean {
+  return type === CANVAS_NODE_TYPES.upload
+    || type === CANVAS_NODE_TYPES.imageEdit
+    || type === CANVAS_NODE_TYPES.exportImage;
+}
+
+function withManualSizeLock(node: CanvasNode): CanvasNode {
+  const nodeData = node.data as CanvasNodeData & { isSizeManuallyAdjusted?: boolean };
+  if (nodeData.isSizeManuallyAdjusted) {
+    return node;
+  }
+
+  return {
+    ...node,
+    data: {
+      ...node.data,
+      isSizeManuallyAdjusted: true,
+    } as CanvasNodeData,
+  };
+}
+
+function resolveNodeWidthForAutoResize(node: CanvasNode): number {
+  const widthFromNode =
+    typeof node.width === 'number' && Number.isFinite(node.width) && node.width > 0
+      ? node.width
+      : null;
+  if (widthFromNode !== null) {
+    return Math.max(EXPORT_RESULT_NODE_MIN_WIDTH, Math.round(widthFromNode));
+  }
+
+  const widthFromMeasured =
+    typeof node.measured?.width === 'number' && Number.isFinite(node.measured.width) && node.measured.width > 0
+      ? node.measured.width
+      : null;
+  if (widthFromMeasured !== null) {
+    return Math.max(EXPORT_RESULT_NODE_MIN_WIDTH, Math.round(widthFromMeasured));
+  }
+
+  const widthFromStyle = getNodeStyleDimension((node.style as { width?: unknown } | undefined)?.width);
+  if (widthFromStyle !== null) {
+    return Math.max(EXPORT_RESULT_NODE_MIN_WIDTH, Math.round(widthFromStyle));
+  }
+
+  return EXPORT_RESULT_NODE_DEFAULT_WIDTH;
+}
+
+function maybeApplyImageAutoResize(node: CanvasNode, patch: Partial<CanvasNodeData>): CanvasNode {
+  if (!isImageAutoResizableType(node.type)) {
+    return node;
+  }
+
+  const nodeData = node.data as CanvasNodeData & {
+    imageUrl?: string | null;
+    aspectRatio?: string;
+    isSizeManuallyAdjusted?: boolean;
+  };
+  const patchData = patch as Partial<CanvasNodeData> & {
+    imageUrl?: string | null;
+    aspectRatio?: string;
+    isSizeManuallyAdjusted?: boolean;
+  };
+
+  const hasImageRelatedChange = 'imageUrl' in patchData || 'previewImageUrl' in patchData || 'aspectRatio' in patchData;
+  if (!hasImageRelatedChange) {
+    return node;
+  }
+
+  const isSizeManuallyAdjusted = patchData.isSizeManuallyAdjusted ?? nodeData.isSizeManuallyAdjusted ?? false;
+  if (isSizeManuallyAdjusted) {
+    return node;
+  }
+
+  const nextImageUrl = patchData.imageUrl ?? nodeData.imageUrl;
+  if (typeof nextImageUrl !== 'string' || nextImageUrl.trim().length === 0) {
+    return node;
+  }
+
+  const nextAspectRatio = patchData.aspectRatio ?? nodeData.aspectRatio ?? DEFAULT_ASPECT_RATIO;
+  const aspectValue = parseAspectRatioValue(nextAspectRatio);
+  const nextWidth = resolveNodeWidthForAutoResize(node);
+  const nextHeight = Math.max(
+    EXPORT_RESULT_NODE_MIN_HEIGHT,
+    Math.round(nextWidth / Math.max(0.1, aspectValue))
+  );
+
+  return {
+    ...node,
+    width: nextWidth,
+    height: nextHeight,
+    style: {
+      ...(node.style ?? {}),
+      width: nextWidth,
+      height: nextHeight,
+    },
+  };
+}
+
 function resolveAbsolutePosition(
   node: CanvasNode,
   nodeMap: Map<string, CanvasNode>
@@ -383,7 +510,27 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   onNodesChange: (changes) => {
     set((state) => {
-      const nextNodes = applyNodeChanges<CanvasNode>(changes, state.nodes);
+      const resizedNodeIds = new Set(
+        changes
+          .filter(
+            (change): change is NodeChange<CanvasNode> & { id: string } =>
+              change.type === 'dimensions'
+              && 'resizing' in change
+              && change.resizing === false
+              && typeof change.id === 'string'
+          )
+          .map((change) => change.id)
+      );
+
+      let nextNodes = applyNodeChanges<CanvasNode>(changes, state.nodes);
+      if (resizedNodeIds.size > 0) {
+        nextNodes = nextNodes.map((node) => {
+          if (!resizedNodeIds.has(node.id) || !isImageAutoResizableType(node.type)) {
+            return node;
+          }
+          return withManualSizeLock(node);
+        });
+      }
       const hasMeaningfulChange = changes.some((change) => change.type !== 'select');
       const hasDragMove = changes.some(
         (change) =>
@@ -612,7 +759,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   addDerivedExportNode: (sourceNodeId, imageUrl, aspectRatio, previewImageUrl, options) => {
     const state = get();
-    const position = state.findNodePosition(sourceNodeId, 220, 180);
+    const position = state.findNodePosition(
+      sourceNodeId,
+      EXPORT_RESULT_NODE_DEFAULT_WIDTH,
+      EXPORT_RESULT_NODE_LAYOUT_HEIGHT
+    );
     const exportNodeData: Partial<CanvasNodeData> = {
       imageUrl,
       previewImageUrl: previewImageUrl ?? null,
@@ -685,14 +836,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           return node;
         }
 
+        const mergedData = {
+          ...node.data,
+          ...data,
+        } as CanvasNodeData;
+        const resizedNode = maybeApplyImageAutoResize(
+          {
+            ...node,
+            data: mergedData,
+          },
+          data
+        );
+
         changed = true;
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            ...data,
-          } as CanvasNodeData,
-        };
+        return resizedNode;
       });
 
       if (!changed) {

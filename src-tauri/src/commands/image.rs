@@ -1285,6 +1285,50 @@ pub async fn save_image_source_to_directory(
 }
 
 #[tauri::command]
+pub async fn save_image_source_to_app_debug_dir(
+    app: AppHandle,
+    source: String,
+    category: Option<String>,
+    suggested_file_name: Option<String>,
+) -> Result<String, String> {
+    let trimmed_source = source.trim();
+    if trimmed_source.is_empty() {
+        return Err("Image source is empty".to_string());
+    }
+
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let normalized_category = sanitize_file_stem(category.as_deref().unwrap_or("grid"));
+    let target_dir = app_data_dir.join("debug").join(normalized_category);
+    std::fs::create_dir_all(&target_dir)
+        .map_err(|e| format!("Failed to create app debug dir: {}", e))?;
+
+    let (bytes, extension) = resolve_source_bytes(trimmed_source).await?;
+    let now_millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| format!("Failed to resolve current time: {}", e))?
+        .as_millis();
+    let stem = sanitize_file_stem(suggested_file_name.as_deref().unwrap_or(""));
+    let default_stem = if stem == "storyboard-image" {
+        format!("debug-{}", now_millis)
+    } else {
+        stem
+    };
+    let output_path = ensure_unique_path(target_dir.join(format!(
+        "{}.{}",
+        default_stem,
+        normalize_extension(&extension)
+    )));
+
+    std::fs::write(&output_path, bytes)
+        .map_err(|e| format!("Failed to save image to app debug dir: {}", e))?;
+
+    Ok(output_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 pub async fn copy_image_source_to_clipboard(source: String) -> Result<(), String> {
     let trimmed = source.trim();
     if trimmed.is_empty() {

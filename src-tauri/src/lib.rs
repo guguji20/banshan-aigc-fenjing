@@ -41,6 +41,7 @@ pub fn run() {
             image::save_image_source_to_downloads,
             image::save_image_source_to_path,
             image::save_image_source_to_directory,
+            image::save_image_source_to_app_debug_dir,
             image::copy_image_source_to_clipboard,
             ai_commands::set_api_key,
             ai_commands::generate_image,

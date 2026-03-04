@@ -13,6 +13,9 @@ import { Upload } from 'lucide-react';
 import {
   CANVAS_NODE_TYPES,
   DEFAULT_ASPECT_RATIO,
+  EXPORT_RESULT_NODE_DEFAULT_WIDTH,
+  EXPORT_RESULT_NODE_MIN_HEIGHT,
+  EXPORT_RESULT_NODE_MIN_WIDTH,
   type UploadImageNodeData,
 } from '@/features/canvas/domain/canvasNodes';
 import {
@@ -54,9 +57,9 @@ export const UploadNode = memo(({ id, data, selected, width, height }: UploadNod
   const { zoom } = useViewport();
   const inputRef = useRef<HTMLInputElement>(null);
   const resolvedAspectRatio = data.aspectRatio || DEFAULT_ASPECT_RATIO;
-  const resolvedWidth = Math.max(160, Math.round(width ?? 220));
+  const resolvedWidth = Math.max(EXPORT_RESULT_NODE_MIN_WIDTH, Math.round(width ?? EXPORT_RESULT_NODE_DEFAULT_WIDTH));
   const resolvedHeight = Math.max(
-    100,
+    EXPORT_RESULT_NODE_MIN_HEIGHT,
     Math.round(height ?? (resolvedWidth / toAspectRatioValue(resolvedAspectRatio)))
   );
   const resolvedTitle = useMemo(() => {
@@ -200,7 +203,12 @@ export const UploadNode = memo(({ id, data, selected, width, height }: UploadNod
         position={Position.Right}
         className="!h-2 !w-2 !border-surface-dark !bg-accent"
       />
-      <NodeResizeHandle minWidth={160} minHeight={100} maxWidth={1400} maxHeight={1400} />
+      <NodeResizeHandle
+        minWidth={EXPORT_RESULT_NODE_MIN_WIDTH}
+        minHeight={EXPORT_RESULT_NODE_MIN_HEIGHT}
+        maxWidth={1400}
+        maxHeight={1400}
+      />
     </div>
   );
 });
