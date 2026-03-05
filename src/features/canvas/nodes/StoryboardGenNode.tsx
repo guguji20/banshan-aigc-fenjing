@@ -35,6 +35,11 @@ import {
   resolveImageDisplayUrl,
 } from '@/features/canvas/application/imageData';
 import {
+  insertReferenceToken,
+  removeTextRange,
+  resolveReferenceAwareDeleteRange,
+} from '@/features/canvas/application/referenceTokenEditing';
+import {
   DEFAULT_IMAGE_MODEL_ID,
   getImageModel,
   listImageModels,
@@ -233,7 +238,10 @@ function renderFrameDescriptionWithHighlights(description: string): ReactNode {
     }
 
     segments.push(
-      <span key={`ref-${matchStart}`} className="font-semibold text-accent">
+      <span
+        key={`ref-${matchStart}`}
+        className="relative z-0 text-white [text-shadow:0.24px_0_currentColor,-0.24px_0_currentColor] before:absolute before:-inset-x-[4px] before:-inset-y-[1px] before:-z-10 before:rounded-[7px] before:bg-accent/55 before:content-['']"
+      >
         {matchText}
       </span>
     );
@@ -970,11 +978,14 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
     const marker = `@图${imageIndex + 1}`;
     const currentDescription = frameDescriptionDraftsRef.current[frame.id] ?? frame.description;
     const cursor = pickerCursor ?? currentDescription.length;
-    const nextDescription = `${currentDescription.slice(0, cursor)}${marker}${currentDescription.slice(cursor)}`;
+    const { nextText: nextDescription, nextCursor } = insertReferenceToken(
+      currentDescription,
+      cursor,
+      marker
+    );
     handleFrameDescriptionChange(pickerFrameIndex, nextDescription);
     closeImagePicker();
 
-    const nextCursor = cursor + marker.length;
     requestAnimationFrame(() => {
       activeFrameTextareaRef.current?.focus();
       activeFrameTextareaRef.current?.setSelectionRange(nextCursor, nextCursor);
@@ -1005,6 +1016,35 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
         }
       }
 
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        const frame = nodeData.frames[index];
+        if (!frame) {
+          return;
+        }
+
+        const currentDescription = frameDescriptionDraftsRef.current[frame.id] ?? frame.description;
+        const selectionStart = event.currentTarget.selectionStart ?? currentDescription.length;
+        const selectionEnd = event.currentTarget.selectionEnd ?? selectionStart;
+        const deleteDirection = event.key === 'Backspace' ? 'backward' : 'forward';
+        const deleteRange = resolveReferenceAwareDeleteRange(
+          currentDescription,
+          selectionStart,
+          selectionEnd,
+          deleteDirection
+        );
+        if (deleteRange) {
+          event.preventDefault();
+          const { nextText, nextCursor } = removeTextRange(currentDescription, deleteRange);
+          handleFrameDescriptionChange(index, nextText);
+          requestAnimationFrame(() => {
+            activeFrameTextareaRef.current?.focus();
+            activeFrameTextareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+            syncFrameHighlightScroll(frame.id);
+          });
+          return;
+        }
+      }
+
       if (event.key === '@' && incomingImages.length > 0) {
         event.preventDefault();
         const cursor = event.currentTarget.selectionStart ?? event.currentTarget.value.length;
@@ -1029,11 +1069,14 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
     },
     [
       closeImagePicker,
+      handleFrameDescriptionChange,
       incomingImages.length,
       insertImageReference,
+      nodeData.frames,
       pickerActiveIndex,
       pickerFrameIndex,
       showImagePicker,
+      syncFrameHighlightScroll,
       zoom,
     ]
   );
@@ -1114,7 +1157,8 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
                   frameHighlightRefs.current[frame.id] = element;
                 }}
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 overflow-auto text-[10px] leading-4 text-text-dark [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="ui-scrollbar pointer-events-none absolute inset-0 overflow-y-auto overflow-x-hidden text-[10px] leading-4 text-text-dark"
+                style={{ scrollbarGutter: 'stable' }}
               >
                 <div className="min-h-full whitespace-pre-wrap break-words px-1.5 py-1 text-left">
                   {renderFrameDescriptionWithHighlights(frameDescription)}
@@ -1144,6 +1188,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
                 placeholder={`分镜 ${String(index + 1).padStart(2, '0')} 描述`}
                 wrap="soft"
                 className="ui-scrollbar nodrag nowheel relative z-10 h-full w-full resize-none overflow-y-auto overflow-x-hidden bg-transparent px-1.5 py-1 text-left text-[10px] leading-4 text-transparent caret-text-dark placeholder:text-text-muted/40 focus:border-accent/50 focus:outline-none whitespace-pre-wrap break-words"
+                style={{ scrollbarGutter: 'stable' }}
               />
             </div>
             );

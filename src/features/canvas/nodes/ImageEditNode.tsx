@@ -34,6 +34,11 @@ import {
   resolveImageDisplayUrl,
 } from '@/features/canvas/application/imageData';
 import {
+  insertReferenceToken,
+  removeTextRange,
+  resolveReferenceAwareDeleteRange,
+} from '@/features/canvas/application/referenceTokenEditing';
+import {
   DEFAULT_IMAGE_MODEL_ID,
   getImageModel,
   listImageModels,
@@ -159,7 +164,10 @@ function renderPromptWithHighlights(prompt: string): ReactNode {
     }
 
     segments.push(
-      <span key={`ref-${matchStart}`} className="font-semibold text-accent">
+      <span
+        key={`ref-${matchStart}`}
+        className="relative z-0 text-white [text-shadow:0.24px_0_currentColor,-0.24px_0_currentColor] before:absolute before:-inset-x-[4px] before:-inset-y-[1px] before:-z-10 before:rounded-[7px] before:bg-accent/55 before:content-['']"
+      >
         {matchText}
       </span>
     );
@@ -469,7 +477,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     const marker = `@图${imageIndex + 1}`;
     const currentPrompt = promptDraftRef.current;
     const cursor = pickerCursor ?? currentPrompt.length;
-    const nextPrompt = `${currentPrompt.slice(0, cursor)}${marker}${currentPrompt.slice(cursor)}`;
+    const { nextText: nextPrompt, nextCursor } = insertReferenceToken(currentPrompt, cursor, marker);
 
     setPromptDraft(nextPrompt);
     commitPromptDraft(nextPrompt);
@@ -477,7 +485,6 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     setPickerCursor(null);
     setPickerActiveIndex(0);
 
-    const nextCursor = cursor + marker.length;
     requestAnimationFrame(() => {
       promptRef.current?.focus();
       promptRef.current?.setSelectionRange(nextCursor, nextCursor);
@@ -486,6 +493,31 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
   }, [commitPromptDraft, pickerCursor]);
 
   const handlePromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      const currentPrompt = promptDraftRef.current;
+      const selectionStart = event.currentTarget.selectionStart ?? currentPrompt.length;
+      const selectionEnd = event.currentTarget.selectionEnd ?? selectionStart;
+      const deletionDirection = event.key === 'Backspace' ? 'backward' : 'forward';
+      const deleteRange = resolveReferenceAwareDeleteRange(
+        currentPrompt,
+        selectionStart,
+        selectionEnd,
+        deletionDirection
+      );
+      if (deleteRange) {
+        event.preventDefault();
+        const { nextText, nextCursor } = removeTextRange(currentPrompt, deleteRange);
+        setPromptDraft(nextText);
+        commitPromptDraft(nextText);
+        requestAnimationFrame(() => {
+          promptRef.current?.focus();
+          promptRef.current?.setSelectionRange(nextCursor, nextCursor);
+          syncPromptHighlightScroll();
+        });
+        return;
+      }
+    }
+
     if (showImagePicker && incomingImages.length > 0) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
@@ -557,7 +589,8 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
           <div
             ref={promptHighlightRef}
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 overflow-auto text-sm leading-6 text-text-dark [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="ui-scrollbar pointer-events-none absolute inset-0 overflow-y-auto overflow-x-hidden text-sm leading-6 text-text-dark"
+            style={{ scrollbarGutter: 'stable' }}
           >
             <div className="min-h-full whitespace-pre-wrap break-words px-1 py-0.5">
               {renderPromptWithHighlights(promptDraft)}
@@ -576,7 +609,8 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
             onScroll={syncPromptHighlightScroll}
             onMouseDown={(event) => event.stopPropagation()}
             placeholder={t('node.imageEdit.promptPlaceholder')}
-            className="ui-scrollbar nodrag nowheel relative z-10 h-full w-full resize-none border-none bg-transparent px-1 py-0.5 text-sm leading-6 text-transparent caret-text-dark outline-none placeholder:text-text-muted/80 focus:border-transparent"
+            className="ui-scrollbar nodrag nowheel relative z-10 h-full w-full resize-none overflow-y-auto overflow-x-hidden border-none bg-transparent px-1 py-0.5 text-sm leading-6 text-transparent caret-text-dark outline-none placeholder:text-text-muted/80 focus:border-transparent whitespace-pre-wrap break-words"
+            style={{ scrollbarGutter: 'stable' }}
           />
         </div>
 
