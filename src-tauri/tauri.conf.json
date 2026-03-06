@@ -11,8 +11,11 @@
   },
   "app": {
     "withGlobalTauri": true,
+    "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
+        "create": false,
         "title": "分镜助手 Storyboard-Copilot",
         "width": 1280,
         "height": 800,

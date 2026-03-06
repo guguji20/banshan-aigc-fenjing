@@ -5,6 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Languages } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useProjectStore } from '@/stores/projectStore';
+import closeNormalIcon from '@/assets/macos-traffic-lights/1-close-1-normal.svg';
+import closeHoverIcon from '@/assets/macos-traffic-lights/2-close-2-hover.svg';
+import minimizeNormalIcon from '@/assets/macos-traffic-lights/2-minimize-1-normal.svg';
+import minimizeHoverIcon from '@/assets/macos-traffic-lights/2-minimize-2-hover.svg';
+import maximizeNormalIcon from '@/assets/macos-traffic-lights/3-maximize-1-normal.svg';
+import maximizeHoverIcon from '@/assets/macos-traffic-lights/3-maximize-2-hover.svg';
 
 interface TitleBarProps {
   onSettingsClick: () => void;
@@ -63,31 +69,40 @@ export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: Title
   return (
     <div className="h-10 flex items-center justify-between bg-surface-dark border-b border-border-dark select-none z-50 relative">
       {isMac ? (
-        <div className="flex items-center h-full pl-3 pr-2 gap-2" data-no-drag="true">
+        <div className="group flex items-center h-full pl-3 pr-2 gap-2" data-no-drag="true">
           <button
             type="button"
             onMouseDown={(event) => event.stopPropagation()}
             onClick={handleClose}
-            className="h-3 w-3 rounded-full bg-[#FF5F57] transition-opacity hover:opacity-80"
+            className="relative flex h-3 w-3 items-center justify-center"
             title={t('titleBar.close')}
             aria-label={t('titleBar.close')}
-          />
+          >
+            <img src={closeNormalIcon} alt="" className="h-3 w-3 pointer-events-none opacity-100 transition-opacity group-hover:opacity-0" />
+            <img src={closeHoverIcon} alt="" className="absolute h-3 w-3 pointer-events-none opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
           <button
             type="button"
             onMouseDown={(event) => event.stopPropagation()}
             onClick={handleMinimize}
-            className="h-3 w-3 rounded-full bg-[#FEBC2E] transition-opacity hover:opacity-80"
+            className="relative flex h-3 w-3 items-center justify-center"
             title={t('titleBar.minimize')}
             aria-label={t('titleBar.minimize')}
-          />
+          >
+            <img src={minimizeNormalIcon} alt="" className="h-3 w-3 pointer-events-none opacity-100 transition-opacity group-hover:opacity-0" />
+            <img src={minimizeHoverIcon} alt="" className="absolute h-3 w-3 pointer-events-none opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
           <button
             type="button"
             onMouseDown={(event) => event.stopPropagation()}
             onClick={handleMaximize}
-            className="h-3 w-3 rounded-full bg-[#28C840] transition-opacity hover:opacity-80"
+            className="relative flex h-3 w-3 items-center justify-center"
             title={t('titleBar.maximize')}
             aria-label={t('titleBar.maximize')}
-          />
+          >
+            <img src={maximizeNormalIcon} alt="" className="h-3 w-3 pointer-events-none opacity-100 transition-opacity group-hover:opacity-0" />
+            <img src={maximizeHoverIcon} alt="" className="absolute h-3 w-3 pointer-events-none opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
         </div>
       ) : null}
 

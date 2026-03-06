@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use commands::ai as ai_commands;
 use commands::image;
 use commands::project_state;
-use tracing::info;
+use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 fn resolve_log_dir() -> Option<PathBuf> {
@@ -60,6 +60,41 @@ pub fn run() {
     setup_logging();
 
     tauri::Builder::default()
+        .setup(|app| {
+            let window_config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|window| window.label == "main")
+                .cloned()
+                .ok_or_else(|| "missing main window config".to_string())?;
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                tauri::WebviewWindowBuilder::from_config(app, &window_config)?.build()?;
+            }
+
+            #[cfg(target_os = "macos")]
+            {
+                let mut mac_window_config = window_config;
+                // Window effects radius only works for transparent windows on macOS.
+                mac_window_config.transparent = true;
+
+                let window = tauri::WebviewWindowBuilder::from_config(app, &mac_window_config)?.build()?;
+
+                if let Err(err) = window.set_effects(Some(
+                    tauri::window::EffectsBuilder::new()
+                        .effect(tauri::window::Effect::Titlebar)
+                        .radius(10.0)
+                        .build(),
+                )) {
+                    warn!("failed to apply macOS window effects: {err}");
+                }
+            }
+
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![

@@ -47,6 +47,14 @@ function App() {
 
   useEffect(() => {
     const root = document.documentElement;
+    const isMac =
+      typeof navigator !== 'undefined'
+      && /(Mac|iPhone|iPad|iPod)/i.test(`${navigator.platform} ${navigator.userAgent}`);
+    root.dataset.platform = isMac ? 'macos' : 'default';
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
     const normalized = accentColor.startsWith('#') ? accentColor : `#${accentColor}`;
     root.style.setProperty('--accent', normalized);
     root.style.setProperty('--accent-rgb', toRgbCssValue(normalized));

@@ -115,6 +115,16 @@ body {
   color: var(--text);
 }
 
+html[data-platform='macos'],
+html[data-platform='macos'] body {
+  background: transparent;
+}
+
+html[data-platform='macos'] #root {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 .ui-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.56) transparent;
