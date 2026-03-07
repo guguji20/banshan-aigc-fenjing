@@ -6,6 +6,10 @@
   [![Bilibili](https://img.shields.io/badge/bilibili-痕继痕迹-00AEEC?logo=bilibili)](https://space.bilibili.com/39337803)
 </div>
 
+<div align="center">
+  <img src="./docs/imgs/readme/storyboard-copilot-homepage.webp" alt="Storyboard Copilot 首页截图" width="820" />
+</div>
+
 ## 下载
 
 <div align="center">
@@ -30,7 +34,7 @@ Windows 用户如果在启动时遇到了报错，请尝试安装 [WebView2 运�
     </a>
   </div>
   <a href="https://platform.minimaxi.com/subscribe/coding-plan?code=8XOI15IbO4&source=link" target="_blank">
-    <img src="./docs/imgs/MiniMax_Coding_Plan.webp" alt="MiniMax Coding Plan" width="720">
+    <img src="./docs/imgs/readme/MiniMax_Coding_Plan.webp" alt="MiniMax Coding Plan" width="720">
   </a>
 </div>
 

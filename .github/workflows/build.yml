@@ -193,6 +193,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Resolve release metadata
         id: resolve_release
@@ -212,6 +213,17 @@ jobs:
           if [[ -n "$NOTES_INPUT" ]]; then
             BODY="$NOTES_INPUT"
           else
+            # Prefer annotated tag message so npm release notes show up in GitHub Releases.
+            git fetch --force --tags >/dev/null 2>&1 || true
+            TAG_TYPE="$(git cat-file -t "$TAG" 2>/dev/null || true)"
+            if [[ "$TAG_TYPE" == "tag" ]]; then
+              BODY="$(git cat-file -p "$TAG" | sed '1,/^$/d' | sed '/^[[:space:]]*$/d')"
+            else
+              BODY=""
+            fi
+          fi
+
+          if [[ -z "$BODY" ]]; then
             BODY="$(git for-each-ref "refs/tags/$TAG" --format='%(contents)' | sed '/^[[:space:]]*$/d')"
           fi
 
