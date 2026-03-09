@@ -12,7 +12,7 @@ use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 const MAIN_WINDOW_LABEL: &str = "main";
-const FRONTEND_READY_TIMEOUT_MS: u64 = 12_000;
+const FRONTEND_READY_TIMEOUT_MS: u64 = 3_500;
 
 fn resolve_log_dir() -> Option<PathBuf> {
     let mut candidates = Vec::new();
@@ -75,6 +75,7 @@ fn show_main_window(app: &tauri::AppHandle) {
 
 #[tauri::command]
 fn frontend_ready(app: tauri::AppHandle) {
+    info!("frontend_ready received, revealing main window");
     show_main_window(&app);
 }
 
@@ -83,6 +84,14 @@ pub fn run() {
     setup_logging();
 
     tauri::Builder::default()
+        .on_page_load(|window, _payload| {
+            if window.label() != MAIN_WINDOW_LABEL {
+                return;
+            }
+
+            info!("main page loaded, revealing main window");
+            show_main_window(&window.app_handle());
+        })
         .setup(|app| {
             let window_config = app
                 .config()

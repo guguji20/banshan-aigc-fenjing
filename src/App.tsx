@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { invoke } from '@tauri-apps/api/core';
 import { Canvas } from './features/canvas/Canvas';
@@ -54,7 +54,6 @@ function App() {
   const hydrate = useProjectStore((state) => state.hydrate);
   const currentProjectId = useProjectStore((state) => state.currentProjectId);
   const closeProject = useProjectStore((state) => state.closeProject);
-  const hasNotifiedFrontendReady = useRef(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -105,38 +104,43 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof window.setTimeout> | null = null;
 
-    const bootScreen = document.getElementById('boot-screen');
-    if (bootScreen) {
-      bootScreen.classList.add('boot-screen--hide');
-      window.setTimeout(() => {
-        bootScreen.remove();
-      }, 220);
-    }
-
-    if (hasNotifiedFrontendReady.current) {
-      return;
-    }
-
-    hasNotifiedFrontendReady.current = true;
-
-    const notifyFrontendReady = async () => {
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
+    const notifyFrontendReady = async (attempt = 1) => {
+      if (cancelled) {
+        return;
+      }
 
       try {
         await invoke('frontend_ready');
       } catch (error) {
-        console.warn('failed to notify frontend readiness', error);
+        if (cancelled) {
+          return;
+        }
+
+        if (attempt === 1 || attempt % 10 === 0) {
+          console.warn('failed to notify frontend readiness', error);
+        }
+
+        const retryDelayMs = Math.min(500, 80 * attempt);
+        retryTimer = window.setTimeout(() => {
+          void notifyFrontendReady(attempt + 1);
+        }, retryDelayMs);
       }
     };
 
-    void notifyFrontendReady();
-  }, [isHydrated]);
+    requestAnimationFrame(() => {
+      void notifyFrontendReady();
+    });
+
+    return () => {
+      cancelled = true;
+      if (retryTimer) {
+        window.clearTimeout(retryTimer);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isHydrated) {
