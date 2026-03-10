@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "分镜助手",
+    "title": "半山AIGC分镜助手",
     "subtitle": "Storyboard Copilot"
   },
   "common": {
@@ -223,12 +223,12 @@
     "providerRegisterLink": "点击这里注册",
     "providerApiKeyGuideMiddle": "，然后",
     "getApiKeyLink": "点击这里获取密钥",
-    "aboutAppName": "分镜助手",
+    "aboutAppName": "半山AIGC分镜助手",
     "aboutIntro": "基于节点画布的 AI 分镜工作台，一站式完成图片生成、编辑与分镜流程。",
     "aboutVersionLabel": "版本",
     "aboutVersionUnknown": "未知",
     "aboutAuthorLabel": "作者",
-    "aboutAuthor": "痕继痕迹",
+    "aboutAuthor": "呼噜熊",
     "aboutRepositoryLabel": "项目仓库",
     "autoCheckUpdateOnLaunch": "启动时自动检查更新",
     "autoCheckUpdateOnLaunchDesc": "每次打开软件自动检查一次新版本。",

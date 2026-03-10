@@ -28,6 +28,7 @@ const PROVIDER_REGISTER_URLS: Record<string, string> = {
   grsai: 'https://grsai.com',
   kie: 'https://kie.ai',
   fal: 'https://fal.ai',
+  ollama: '',
 };
 
 const PROVIDER_GET_KEY_URLS: Record<string, string> = {
@@ -35,6 +36,7 @@ const PROVIDER_GET_KEY_URLS: Record<string, string> = {
   grsai: 'https://grsai.com/zh/dashboard/api-keys',
   kie: 'https://kie.ai/api-key',
   fal: 'https://fal.ai/dashboard/keys',
+  ollama: '',
 };
 
 export function SettingsDialog({
@@ -74,7 +76,7 @@ export function SettingsDialog({
     setEnableUpdateDialog,
   } = useSettingsStore();
   const providers = useMemo(() => {
-    const providerOrder = ['ppio', 'fal', 'kie', 'grsai'];
+    const providerOrder = ['ppio', 'fal', 'kie', 'grsai', 'ollama'];
     const providerIndex = new Map(providerOrder.map((id, index) => [id, index]));
     return listModelProviders().slice().sort((left, right) => {
       const leftIndex = providerIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
@@ -788,13 +790,13 @@ export function SettingsDialog({
                   <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
                     <div className="flex items-start gap-4">
                       <img
-                        src="/app-icon.png"
+                        src="/logo.jpg"
                         alt={t('settings.aboutAppName')}
                         className="h-14 w-14 rounded-lg border border-border-dark object-cover"
                       />
                       <div className="min-w-0 flex-1">
                         <a
-                          href="https://space.bilibili.com/39337803"
+                          href="https://github.com/guguji20/banshan-aigc-fenjing"
                           target="_blank"
                           rel="noreferrer"
                           className="text-base font-semibold text-accent hover:underline"
@@ -815,7 +817,7 @@ export function SettingsDialog({
                     <p className="text-text-dark">
                       {t('settings.aboutAuthorLabel')}:{' '}
                       <a
-                        href="https://space.bilibili.com/39337803"
+                        href="https://github.com/guguji20/banshan-aigc-fenjing"
                         target="_blank"
                         rel="noreferrer"
                         className="text-accent hover:underline"
@@ -826,12 +828,12 @@ export function SettingsDialog({
                     <p className="text-text-dark">
                       {t('settings.aboutRepositoryLabel')}:{' '}
                       <a
-                        href="https://github.com/henjicc/Storyboard-Copilot"
+                        href="https://github.com/guguji20/banshan-aigc-fenjing"
                         target="_blank"
                         rel="noreferrer"
                         className="text-accent hover:underline break-all"
                       >
-                        https://github.com/henjicc/Storyboard-Copilot
+                        https://github.com/guguji20/banshan-aigc-fenjing
                       </a>
                     </p>
                   </div>
