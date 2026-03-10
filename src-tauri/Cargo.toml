@@ -1,12 +1,12 @@
 [package]
-name = "storyboard-copilot"
-version = "0.1.8"
-description = "分镜助手 - AI图像生成与分镜工具"
-authors = ["you"]
+name = "huabang-fenjing"
+version = "1.0.0"
+description = "半山AIGC分镜大师 - AI图像生成与分镜工具"
+authors = ["呼噜熊"]
 edition = "2021"
 
 [lib]
-name = "storyboard_copilot_lib"
+name = "huabang_aigc_storyboard_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -16,6 +16,10 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["protocol-asset", "devtools", "macos-private-api"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-http = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-clipboard-manager = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 image = "0.25"

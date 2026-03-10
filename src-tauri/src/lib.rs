@@ -19,10 +19,10 @@ fn resolve_log_dir() -> Option<PathBuf> {
 
     #[cfg(target_os = "macos")]
     if let Ok(home) = std::env::var("HOME") {
-        candidates.push(PathBuf::from(home).join("Library/Logs/storyboard-copilot"));
+        candidates.push(PathBuf::from(home).join("Library/Logs/huabang-aigc-storyboard"));
     }
 
-    candidates.push(std::env::temp_dir().join("storyboard-copilot/logs"));
+    candidates.push(std::env::temp_dir().join("huabang-aigc-storyboard/logs"));
 
     if let Ok(current_dir) = std::env::current_dir() {
         candidates.push(current_dir.join("logs"));
@@ -156,6 +156,10 @@ pub fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             frontend_ready,
             image::split_image,
